@@ -1,4 +1,6 @@
-@Library('xmos_jenkins_shared_library@v0.18.0') _
+// This file relates to internal XMOS infrastructure and should be ignored by external users
+
+@Library('xmos_jenkins_shared_library@v0.33.0') _
 
 getApproval()
 
@@ -11,39 +13,42 @@ pipeline {
     VIEW = getViewName(REPO)
   }
   options {
+    buildDiscarder(xmosDiscardBuildSettings())
     skipDefaultCheckout()
     timestamps()
-    // on develop discard builds after a certain number else keep forever
-    buildDiscarder(logRotator(
-        numToKeepStr:         env.BRANCH_NAME ==~ /develop/ ? '100' : '',
-        artifactNumToKeepStr: env.BRANCH_NAME ==~ /develop/ ? '100' : ''
-    ))
   }
+  parameters {
+    string(
+      name: 'TOOLS_VERSION',
+      defaultValue: '15.3.0',
+      description: 'The XTC tools version'
+    )
+  }
+
   stages {
     stage('Get view') {
       steps {
         xcorePrepareSandbox("${VIEW}", "${REPO}")
       }
     }
-    stage('Library checks') {
+    stage('Build examples') {
       steps {
-        xcoreLibraryChecks("${REPO}")
-      }
-    }
-    stage('xCORE builds') {
-      steps {
+        println "Stage running on ${env.NODE_NAME}"
         dir("${REPO}") {
-          // xcoreAllAppsBuild('examples')
-          xcoreAllAppNotesBuild('examples')
-          dir("${REPO}") {
-            runXdoc('doc')
+          checkout scm
+
+          dir("examples") {
+            withTools(params.TOOLS_VERSION) {
+              sh 'cmake -G "Unix Makefiles" -B build'
+              sh 'xmake -C build -j 8'
+            }
           }
         }
-        // Archive all the generated .pdf docs
-        archiveArtifacts artifacts: "${REPO}/**/pdf/*.pdf", fingerprint: true, allowEmptyArchive: true
+      runLibraryChecks("${WORKSPACE}/${REPO}")
       }
-    }
-    stage('Tests') 
+    }  // Build examples
+
+    stage('Tests')
     {
       steps {
         dir("${REPO}/tests"){
@@ -54,9 +59,9 @@ pipeline {
           }
         }
       }
-       post 
+       post
        {
-        failure 
+        failure
         {
           archiveArtifacts artifacts: "${REPO}/tests/logs/*.txt", fingerprint: true, allowEmptyArchive: true
         }
