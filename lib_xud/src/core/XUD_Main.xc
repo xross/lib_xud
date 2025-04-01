@@ -77,7 +77,6 @@ unsigned SavedSp;
 int epStatFlagTableIn[USB_MAX_NUM_EP_IN];
 int epStatFlagTableOut[USB_MAX_NUM_EP_OUT];
 
-
 unsigned sentReset = 0;
 
 unsigned chanArray;
@@ -104,7 +103,7 @@ void XUD_SetCrcTableAddr(unsigned addr);
 static int one = 1;
 
 #pragma unsafe arrays
-static void SendResetToEps(XUD_chan c[], XUD_chan epAddr_Ready[], XUD_EpType epTypeTableOut[], XUD_EpType epTypeTableIn[], int nOut, int nIn, int token)
+void SendBusStateToEps(XUD_chan c[], XUD_chan epAddr_Ready[], XUD_EpType epTypeTableOut[], XUD_EpType epTypeTableIn[], int nOut, int nIn, unsigned token)
 {
     for(int i = 0; i < nOut; i++)
     {
@@ -145,6 +144,25 @@ static void SendSpeed(XUD_chan c[], XUD_EpType epTypeTableOut[], XUD_EpType epTy
         if(epTypeTableIn[i] != XUD_EPTYPE_DIS && epStatFlagTableIn[i])
         {
             XUD_Sup_outuint(c[i + USB_MAX_NUM_EP_OUT], speed);
+        }
+    }
+}
+
+#pragma unsafe arrays
+void GetCTFromEps(XUD_chan c[], XUD_chan epAddr_Ready[], XUD_EpType epTypeTableOut[], XUD_EpType epTypeTableIn[], int nOut, int nIn)
+{
+    for(int i = 0; i < nOut; i++)
+    {
+        if(epTypeTableOut[i] != XUD_EPTYPE_DIS && epStatFlagTableOut[i])
+        {
+            XUD_Sup_inct(c[i]);
+        }
+    }
+    for(int i = 0; i < nIn; i++)
+    {
+        if(epTypeTableIn[i] != XUD_EPTYPE_DIS && epStatFlagTableIn[i])
+        {
+            XUD_Sup_inct(c[i + USB_MAX_NUM_EP_OUT]);
         }
     }
 }
@@ -296,14 +314,15 @@ static int XUD_Manager_loop(XUD_chan epChans0[], XUD_chan epAddr_Ready[],  chane
                     else
                         reset = 0;
                 }
-                /* Inspect for suspend or reset */
+
+                /* Handle suspend */
                 if(!reset)
                 {
                     /* Run user suspend code */
                     XUD_UserSuspend();
 
                     /* Run suspend code, returns 1 if reset from suspend, 0 for resume, -1 for invalid vbus */
-                    reset = XUD_Suspend(pwrConfig);
+                    reset = XUD_Suspend(pwrConfig, epChans0, epAddr_Ready, epTypeTableOut, epTypeTableIn, noEpOut, noEpIn);
 
                     if((pwrConfig == XUD_PWR_SELF) && (reset==-1))
                     {
@@ -314,12 +333,13 @@ static int XUD_Manager_loop(XUD_chan epChans0[], XUD_chan epAddr_Ready[],  chane
                     /* Run user resume code */
                     XUD_UserResume();
                 }
-                /* Test if coming back from reset or suspend */
+
+                /* Handle bus reset */
                 if(reset == 1)
                 {
                     if(!sentReset)
                     {
-                        SendResetToEps(epChans0, epAddr_Ready, epTypeTableOut, epTypeTableIn, noEpOut, noEpIn, USB_RESET_TOKEN);
+                        SendBusStateToEps(epChans0, epAddr_Ready, epTypeTableOut, epTypeTableIn, noEpOut, noEpIn, XUD_RESET_TOKEN);
                         sentReset = 1;
                     }
 
