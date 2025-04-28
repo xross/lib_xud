@@ -156,6 +156,7 @@ void GetCTFromEps(XUD_chan c[], XUD_chan epAddr_Ready[], XUD_EpType epTypeTableO
         if(epTypeTableOut[i] != XUD_EPTYPE_DIS && epStatFlagTableOut[i])
         {
             XUD_Sup_inct(c[i]);
+            ep_info[i].resetting = 0;
         }
     }
     for(int i = 0; i < nIn; i++)
@@ -163,6 +164,7 @@ void GetCTFromEps(XUD_chan c[], XUD_chan epAddr_Ready[], XUD_EpType epTypeTableO
         if(epTypeTableIn[i] != XUD_EPTYPE_DIS && epStatFlagTableIn[i])
         {
             XUD_Sup_inct(c[i + USB_MAX_NUM_EP_OUT]);
+            ep_info[i + USB_MAX_NUM_EP_OUT].resetting = 0;
         }
     }
 }
