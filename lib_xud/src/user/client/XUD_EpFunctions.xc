@@ -87,58 +87,14 @@ XUD_BusState_t XUD_GetBusState(XUD_ep one, XUD_ep &?two)
             assert(0);
             break;
     }
-}
-XUD_Result_t XUD_Ack(XUD_ep one, NULLABLE_REFERENCE_PARAM(XUD_ep, two))
-{
-    unsigned c1, c2;
-
-
-    asm volatile("ldw %0, %1[2]":"=r"(c1):"r"(one));              // Load EP chanend
-    asm volatile ("outct res[%0], 9":: "r"(c1));                  // TODO remove magic number
-
-    if (!isnull(two))
-    {
-        asm volatile("ldw %0, %1[2]":"=r"(c2):"r"(two));          // Load EP chanend
-        asm volatile ("outct res[%0], 9":: "r"(c2));              // TODO remove magic number
-    }
-
-    return XUD_RES_OKAY;
+    return 0; // Unreachable
 }
 
-XUD_Result_t XUD_WaitForSuspendEnd(XUD_ep one, NULLABLE_REFERENCE_PARAM(XUD_ep, two))
+static void XUD_EPUpdateCommon(XUD_ep one, NULLABLE_REFERENCE_PARAM(XUD_ep, two))
 {
-    unsigned c1, c2, tmp;
+    // Clear resetting flag and mark endpoint as not ready
 
-    asm volatile("ldw %0, %1[2]":"=r"(c1):"r"(one));              // Load EP chanend
-
-    if (!isnull(two))
-    {
-        asm volatile("ldw %0, %1[2]":"=r"(c2):"r"(two));          // Load EP chanend
-    }
-
-    asm volatile("testct %0, res[%1]" : "=r"(tmp) : "r"(c1));
-
-    assert(tmp);
-
-    asm volatile ("inct %0, res[%1]": "=r"(tmp):"r"(c1)); // busStateCt = inct(one);
-    asm volatile ("inct %0, res[%1]": "=r"(tmp):"r"(c2)); // busStateCt = inct(one);
-
-    return XUD_RES_OKAY;
-}
-
-
-XUD_BusSpeed_t XUD_ResetEndpoint(XUD_ep one, XUD_ep &?two)
-{
-    int busSpeed;
-
-    unsigned c1, c2, tmp;
-
-    asm volatile("ldw %0, %1[2]":"=r"(c1):"r"(one));              // Load EP chanend
-
-    if (!isnull(two))
-    {
-        asm volatile("ldw %0, %1[2]":"=r"(c2):"r"(two));          // Load EP chanend
-    }
+    unsigned tmp;
 
     /* Clear ready flag (tidies small race where EP marked ready just after XUD clears ready due to reset */
     asm volatile("ldw %0, %1[0]":"=r"(tmp):"r"(one));           // Load address of ep in XUD rdy table
@@ -154,6 +110,50 @@ XUD_BusSpeed_t XUD_ResetEndpoint(XUD_ep one, XUD_ep &?two)
 
          /* Reset reseting flag */
         asm volatile ("stw %0, %1[9]"::"r"(0), "r"(two));
+    }
+
+}
+
+XUD_Result_t XUD_Ack(XUD_ep one, NULLABLE_REFERENCE_PARAM(XUD_ep, two))
+{
+    unsigned c1, c2;
+
+    XUD_EPUpdateCommon(one, two);
+
+    asm volatile("ldw %0, %1[2]":"=r"(c1):"r"(one));              // Load EP chanend
+
+    if (!isnull(two))
+    {
+        asm volatile("ldw %0, %1[2]":"=r"(c2):"r"(two));          // Load EP chanend
+    }
+
+
+    asm volatile("ldw %0, %1[2]":"=r"(c1):"r"(one));              // Load EP chanend
+    asm volatile ("outct res[%0], 9":: "r"(c1));                  // Send ACK. TODO remove magic number
+
+    if (!isnull(two))
+    {
+        asm volatile("ldw %0, %1[2]":"=r"(c2):"r"(two));          // Load EP chanend
+        asm volatile ("outct res[%0], 9":: "r"(c2));              // Send ACK. TODO remove magic number
+    }
+
+    return XUD_RES_OKAY;
+}
+
+
+XUD_BusSpeed_t XUD_ResetEndpoint(XUD_ep one, XUD_ep &?two)
+{
+    int busSpeed;
+
+    unsigned c1, c2, tmp;
+
+    XUD_EPUpdateCommon(one, two);
+
+    asm volatile("ldw %0, %1[2]":"=r"(c1):"r"(one));              // Load EP chanend
+
+    if (!isnull(two))
+    {
+        asm volatile("ldw %0, %1[2]":"=r"(c2):"r"(two));          // Load EP chanend
     }
 
     asm volatile("testct %0, res[%1]" : "=r"(tmp) : "r"(c1));
