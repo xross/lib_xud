@@ -92,15 +92,14 @@ XUD_BusState_t XUD_GetBusState(XUD_ep one, XUD_ep &?two)
 
 static void XUD_EPUpdateCommon(XUD_ep one, NULLABLE_REFERENCE_PARAM(XUD_ep, two))
 {
-    // Clear resetting flag and mark endpoint as not ready
-
+    // Clear busUpdate flag and mark endpoint as not ready
     unsigned tmp;
 
     /* Clear ready flag (tidies small race where EP marked ready just after XUD clears ready due to reset */
     asm volatile("ldw %0, %1[0]":"=r"(tmp):"r"(one));           // Load address of ep in XUD rdy table
     asm volatile ("stw %0, %1[0]"::"r"(0), "r"(tmp));
 
-    /* Clear resetting flag */
+    /* Clear busUpdate flag */
     asm volatile ("stw %0, %1[9]"::"r"(0), "r"(one));
 
     if(!isnull(two))
@@ -108,10 +107,9 @@ static void XUD_EPUpdateCommon(XUD_ep one, NULLABLE_REFERENCE_PARAM(XUD_ep, two)
         asm volatile("ldw %0, %1[0]":"=r"(tmp):"r"(two));       // Load address of ep in XUD rdy table
         asm volatile ("stw %0, %1[0]"::"r"(0), "r"(tmp));
 
-         /* Reset reseting flag */
+         /* Reset busUpdate flag */
         asm volatile ("stw %0, %1[9]"::"r"(0), "r"(two));
     }
-
 }
 
 XUD_Result_t XUD_Ack(XUD_ep one, NULLABLE_REFERENCE_PARAM(XUD_ep, two))
