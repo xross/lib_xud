@@ -529,7 +529,7 @@ typedef struct XUD_ep_info
     unsigned int actualPid;            // 6 Actual OUT PID received for OUT, Length (words) for IN.
     unsigned int tailLength;           // 7 "tail" length for IN (bytes)
     unsigned int epAddress;            // 8 EP address assigned by XUD (Used for marking stall etc)
-    unsigned int resetting;            // 9 Flag to indicate to EP a bus-reset occured.
+    unsigned int busUpdate;            // 9 Flag to indicate to EP a bus-reset occured.
     unsigned int halted;               // 10 NAK or STALL
     unsigned int saved_array_ptr;      // 11
     unsigned int array_ptr_setup;      // 12

@@ -109,10 +109,10 @@ void SendBusStateToEps(XUD_chan c[], XUD_chan epAddr_Ready[], XUD_EpType epTypeT
     {
         if(epTypeTableOut[i] != XUD_EPTYPE_DIS && epStatFlagTableOut[i])
         {
-            /* Set EP resetting flag. EP uses this to check if it missed a reset before setting ready */
-            ep_info[i].resetting = 1;
+            /* Set EP busUpdate flag. EP uses this to check if it missed a reset before setting ready */
+            ep_info[i].busUpdate = 1;
 
-            /* Clear EP ready. Note. small race since EP might set ready after XUD sets resetting to 1
+            /* Clear EP ready. Note. small race since EP might set ready after XUD sets busUpdate to 1
              * but this should be caught in time (EP gets CT) */
             epAddr_Ready[i] = 0;
             epAddr_Ready[i+ USB_MAX_NUM_EP] = 0;
@@ -123,13 +123,14 @@ void SendBusStateToEps(XUD_chan c[], XUD_chan epAddr_Ready[], XUD_EpType epTypeT
     {
         if(epTypeTableIn[i] != XUD_EPTYPE_DIS && epStatFlagTableIn[i])
         {
-            ep_info[i + USB_MAX_NUM_EP_OUT].resetting = 1;
+            ep_info[i + USB_MAX_NUM_EP_OUT].busUpdate = 1;
             epAddr_Ready[i + USB_MAX_NUM_EP_OUT] = 0;
             XUD_Sup_outct(c[i + USB_MAX_NUM_EP_OUT], token);
         }
     }
 }
 
+#pragma unsafe arrays
 static void SendSpeed(XUD_chan c[], XUD_EpType epTypeTableOut[], XUD_EpType epTypeTableIn[], int nOut, int nIn, int speed)
 {
     for(int i = 0; i < nOut; i++)
@@ -478,7 +479,7 @@ void SetupEndpoints(chanend c_ep_out[], int noEpOut, chanend c_ep_in[], int noEp
         epAddr_Ready[i] = 0;
         epAddr_Ready[i+USB_MAX_NUM_EP] = 0; //epAddr_Ready_Setup
         ep_info[i].epAddress = i;
-        ep_info[i].resetting = 0;
+        ep_info[i].busUpdate = 0;
 
         /* Mark all EP's as halted, we might later clear this if the EP is in use */
         ep_info[i].halted = USB_PIDn_STALL;
@@ -493,7 +494,7 @@ void SetupEndpoints(chanend c_ep_out[], int noEpOut, chanend c_ep_in[], int noEp
         ep_info[i].epAddress = i;
         epAddr_Ready[USB_MAX_NUM_EP_OUT+i] = 0;
         ep_info[USB_MAX_NUM_EP_OUT+i].epAddress = (i | 0x80);
-        ep_info[USB_MAX_NUM_EP_OUT+i].resetting = 0;
+        ep_info[USB_MAX_NUM_EP_OUT+i].busUpdate = 0;
         ep_info[USB_MAX_NUM_EP_OUT+i].halted = USB_PIDn_STALL;
 
         asm("ldaw %0, %1[%2]":"=r"(x):"r"(ep_info),"r"((USB_MAX_NUM_EP_OUT+i)*sizeof(XUD_ep_info)/sizeof(unsigned)));

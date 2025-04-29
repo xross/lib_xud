@@ -98,7 +98,7 @@ static inline XUD_Result_t XUD_GetBuffer_Start(volatile XUD_ep_info *ep, unsigne
     do
     {
         /* Check if we missed a reset */
-        if(ep->resetting)
+        if(ep->busUpdate)
         {
             return XUD_RES_UPDATE;
         }
@@ -222,7 +222,7 @@ XUD_Result_t XUD_GetSetupBuffer(XUD_ep e, unsigned char buffer[], unsigned *data
     unsigned lengthTail;
 
     /* Check if we missed a bus state update */
-    if(ep->resetting) // TODO this should be busUpdate
+    if(ep->busUpdate) // TODO this should be busUpdate
     {
         return XUD_RES_UPDATE;
     }
@@ -274,7 +274,7 @@ XUD_Result_t XUD_SetBuffer_Start(XUD_ep e, unsigned char buffer[], unsigned data
     {
         /* Check if we missed a reset */
         // TODO
-        if(ep->resetting)
+        if(ep->busUpdate)
         {
             return XUD_RES_UPDATE;
         }
